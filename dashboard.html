@@ -1,0 +1,792 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>AVSEC PRO — Dashboard Operacional</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=Exo+2:wght@300;400;500;600&family=Share+Tech+Mono&display=swap" rel="stylesheet"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --void:#020B14;--deep:#030F1C;--panel:#0A2035;--card:#0d2540;
+  --cyan:#00E5FF;--cyan2:#00B8D4;--neon:#39FF14;--amber:#FFB300;
+  --red:#FF1744;--violet:#E040FB;--dim:#37474F;
+  --t1:#E0F7FA;--t2:#80DEEA;--t3:#4DD0E1;
+  --mono:'Share Tech Mono',monospace;
+  --head:'Orbitron',sans-serif;
+  --body:'Exo 2',sans-serif;
+  --glow-cyan:0 0 10px #00E5FF50,0 0 30px #00E5FF20;
+  --glow-neon:0 0 10px #39FF1450,0 0 25px #39FF1420;
+  --glow-red:0 0 10px #FF174450;
+  --glow-amber:0 0 10px #FFB30050;
+}
+html,body{background:var(--void);color:var(--t1);font-family:var(--body);min-height:100vh;overflow-x:hidden}
+button{cursor:pointer;border:none;font-family:var(--body)}
+input,select{font-family:var(--mono);font-size:13px;background:rgba(7,24,40,.9);color:var(--t1);border:1px solid rgba(0,229,255,.2);border-radius:6px;outline:none;padding:9px 13px}
+input:focus,select:focus{border-color:var(--cyan);box-shadow:0 0 0 2px rgba(0,229,255,.1)}
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-track{background:var(--deep)}
+::-webkit-scrollbar-thumb{background:var(--cyan2);border-radius:2px}
+a{color:var(--cyan);text-decoration:none}
+a:hover{text-decoration:underline}
+
+@keyframes rotate-slow{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+@keyframes rotate-ccw{from{transform:rotate(0deg)}to{transform:rotate(-360deg)}}
+@keyframes holo-shimmer{0%{background-position:-200% center}100%{background-position:200% center}}
+@keyframes slide-up{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+@keyframes fade-in{from{opacity:0}to{opacity:1}}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+@keyframes grid-fade{0%,100%{opacity:.03}50%{opacity:.07}}
+@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+
+.grid-bg{position:fixed;inset:0;z-index:0;pointer-events:none;
+  background-image:linear-gradient(rgba(0,229,255,.04) 1px,transparent 1px),linear-gradient(90deg,rgba(0,229,255,.04) 1px,transparent 1px);
+  background-size:48px 48px;animation:grid-fade 6s ease-in-out infinite}
+
+.holo-text{background:linear-gradient(90deg,var(--cyan),#fff,var(--cyan2),var(--cyan));background-size:200% auto;
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;animation:holo-shimmer 4s linear infinite}
+
+.hex-ring{position:relative;display:flex;align-items:center;justify-content:center}
+.hex-ring .r1,.hex-ring .r2{position:absolute;inset:0;border-radius:50%;border:2px solid transparent}
+.hex-ring .r1{border-top-color:var(--cyan);border-right-color:var(--cyan);animation:rotate-slow 3s linear infinite;opacity:.7}
+.hex-ring .r2{inset:5px;border-bottom-color:var(--cyan);border-left-color:var(--cyan);animation:rotate-ccw 2s linear infinite;opacity:.4}
+.hex-ring .ri{position:relative;z-index:1}
+
+.su{animation:slide-up .35s ease both}
+.fi{animation:fade-in .3s ease both}
+
+/* NAV */
+.topnav{position:sticky;top:0;z-index:100;background:rgba(3,15,28,.95);backdrop-filter:blur(20px);
+  border-bottom:1px solid rgba(0,229,255,.12);height:56px;display:flex;align-items:center;padding:0 24px;gap:16px}
+.nav-tab{padding:6px 14px;font-family:var(--head);font-size:11px;font-weight:600;letter-spacing:.08em;
+  color:var(--dim);background:transparent;border:none;border-bottom:2px solid transparent;
+  transition:all .15s;cursor:pointer;text-transform:uppercase}
+.nav-tab.active{color:var(--cyan);border-bottom-color:var(--cyan)}
+.nav-tab:hover:not(.active){color:var(--t2)}
+
+/* CARDS */
+.stat-card{padding:18px 20px;border-radius:8px;background:var(--card);border:1px solid rgba(0,229,255,.1);
+  box-shadow:0 0 20px rgba(0,229,255,.04);transition:transform .18s}
+.stat-card:hover{transform:translateY(-2px)}
+
+/* TABLE */
+.data-table{width:100%;border-collapse:collapse;font-size:12px}
+.data-table th{font-family:var(--mono);font-size:9px;letter-spacing:.08em;color:var(--t3);
+  padding:10px 14px;text-align:left;border-bottom:1px solid rgba(0,229,255,.15);
+  background:rgba(0,229,255,.04);white-space:nowrap}
+.data-table td{padding:10px 14px;border-bottom:1px solid rgba(0,229,255,.06);vertical-align:middle;
+  font-family:var(--mono);font-size:11px}
+.data-table tr:hover td{background:rgba(0,229,255,.04)}
+.data-table tr.expired td{background:rgba(255,23,68,.05);color:#ff8a8a}
+
+/* BADGES */
+.badge{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:3px;
+  font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:.04em;white-space:nowrap}
+.badge-in{background:rgba(57,255,20,.12);color:var(--neon);border:1px solid rgba(57,255,20,.3)}
+.badge-out{background:rgba(255,23,68,.12);color:var(--red);border:1px solid rgba(255,23,68,.3)}
+.badge-insp{background:rgba(0,229,255,.1);color:var(--cyan);border:1px solid rgba(0,229,255,.25)}
+.badge-ctrl{background:rgba(57,255,20,.1);color:var(--neon);border:1px solid rgba(57,255,20,.25)}
+.badge-ramp{background:rgba(255,179,0,.1);color:var(--amber);border:1px solid rgba(255,179,0,.25)}
+.badge-exp{background:rgba(255,23,68,.15);color:var(--red);border:1px solid rgba(255,23,68,.4);animation:blink 2s infinite}
+
+/* FILTERS */
+.filter-bar{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end}
+.filter-group{display:flex;flex-direction:column;gap:5px}
+.filter-label{font-family:var(--mono);font-size:9px;color:var(--dim);letter-spacing:.06em}
+.filter-bar input,.filter-bar select{min-width:140px}
+
+/* PHOTO GRID */
+.photo-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px}
+.photo-card{border-radius:8px;overflow:hidden;border:1px solid rgba(0,229,255,.15);
+  background:var(--card);cursor:pointer;transition:all .2s}
+.photo-card:hover{border-color:var(--cyan);transform:translateY(-2px);box-shadow:var(--glow-cyan)}
+.photo-card img{width:100%;height:130px;object-fit:cover;display:block}
+.photo-card .photo-meta{padding:8px 10px}
+.photo-card .photo-name{font-family:var(--mono);font-size:9px;color:var(--t2);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-bottom:3px}
+.photo-card .photo-time{font-family:var(--mono);font-size:8px;color:var(--dim)}
+
+/* FOLDER LIST */
+.folder-card{padding:14px 16px;border-radius:8px;background:var(--card);
+  border:1px solid rgba(0,229,255,.12);cursor:pointer;transition:all .18s;
+  display:flex;align-items:center;gap:12px}
+.folder-card:hover{border-color:var(--cyan);background:rgba(0,229,255,.06)}
+.folder-card.active{border-color:var(--cyan);background:rgba(0,229,255,.08);box-shadow:var(--glow-cyan)}
+
+/* LIGHTBOX */
+#lightbox{display:none;position:fixed;inset:0;background:rgba(2,11,20,.97);z-index:900;
+  align-items:center;justify-content:center;flex-direction:column;gap:14px}
+#lightbox.open{display:flex;animation:fade-in .2s ease}
+#lightbox img{max-width:90vw;max-height:78vh;border-radius:8px;border:1px solid rgba(0,229,255,.3);box-shadow:var(--glow-cyan)}
+#lightbox-name{font-family:var(--mono);font-size:11px;color:var(--t2);text-align:center}
+#lightbox-close{position:absolute;top:16px;right:20px;background:transparent;border:none;
+  color:var(--t3);font-size:22px;cursor:pointer;padding:8px;transition:color .15s}
+#lightbox-close:hover{color:var(--red)}
+
+/* SETUP SCREEN */
+#setup-screen{display:flex;flex-direction:column;align-items:center;justify-content:center;
+  min-height:80vh;gap:22px;padding:32px;text-align:center}
+
+/* SPINNER */
+.spin-wrap{display:flex;align-items:center;justify-content:center;padding:60px;flex-direction:column;gap:14px}
+.spinner{width:36px;height:36px;border-radius:50%;border:3px solid rgba(0,229,255,.15);
+  border-top-color:var(--cyan);animation:spin .8s linear infinite}
+
+/* EMPTY STATE */
+.empty{display:flex;flex-direction:column;align-items:center;justify-content:center;
+  padding:60px 20px;gap:14px;color:var(--dim);text-align:center}
+.empty .empty-icon{font-size:40px;opacity:.4}
+.empty p{font-family:var(--mono);font-size:11px;line-height:1.8}
+
+/* SECTION */
+.section{position:relative;z-index:1;padding:24px;display:flex;flex-direction:column;gap:18px}
+.section-title{font-family:var(--head);font-size:16px;color:var(--cyan);letter-spacing:.08em;font-weight:700}
+.section-sub{font-family:var(--mono);font-size:10px;color:var(--dim);margin-top:3px}
+
+/* TAB CONTENT */
+.tab-content{display:none}
+.tab-content.active{display:block}
+
+/* PAGINATION */
+.pager{display:flex;align-items:center;gap:8px;justify-content:flex-end;margin-top:10px}
+.pager button{padding:5px 12px;border-radius:4px;background:rgba(0,229,255,.08);
+  border:1px solid rgba(0,229,255,.2);color:var(--cyan);font-family:var(--mono);
+  font-size:10px;cursor:pointer;transition:all .15s}
+.pager button:hover:not(:disabled){background:rgba(0,229,255,.18)}
+.pager button:disabled{opacity:.35;cursor:default}
+.pager span{font-family:var(--mono);font-size:10px;color:var(--dim)}
+
+/* EXPORT BTN */
+.btn-solid{padding:9px 18px;border-radius:6px;font-family:var(--head);font-weight:700;
+  font-size:11px;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;
+  transition:all .18s;border:none}
+.btn-cyan{background:var(--cyan);color:var(--void);box-shadow:var(--glow-cyan)}
+.btn-cyan:hover{background:#fff}
+.btn-outline{background:transparent;color:var(--cyan);border:1px solid rgba(0,229,255,.3);
+  padding:8px 16px;border-radius:5px;font-family:var(--mono);font-size:10px;
+  letter-spacing:.06em;cursor:pointer;transition:all .15s}
+.btn-outline:hover{background:rgba(0,229,255,.1);border-color:var(--cyan)}
+
+.tag-insp{color:var(--cyan)} .tag-ctrl{color:var(--neon)} .tag-ramp{color:var(--amber)}
+</style>
+</head>
+<body>
+<div class="grid-bg"></div>
+
+<!-- ── LIGHTBOX ── -->
+<div id="lightbox">
+  <button id="lightbox-close" onclick="closeLightbox()">✕</button>
+  <img id="lightbox-img" src="" alt=""/>
+  <div id="lightbox-name"></div>
+  <a id="lightbox-link" href="#" target="_blank" style="font-family:var(--mono);font-size:10px;color:var(--cyan)">
+    Abrir en Drive ↗
+  </a>
+</div>
+
+<!-- ── SETUP SCREEN ── -->
+<div id="setup-screen">
+  <div class="hex-ring" style="width:90px;height:90px">
+    <div class="r1"></div><div class="r2"></div>
+    <div class="ri" style="font-size:36px">📊</div>
+  </div>
+  <div>
+    <div class="holo-text" style="font-family:var(--head);font-size:36px;font-weight:900;letter-spacing:.12em">AVSEC PRO</div>
+    <div style="font-family:var(--head);font-size:11px;color:var(--cyan2);letter-spacing:.2em;margin-top:6px">DASHBOARD OPERACIONAL</div>
+  </div>
+  <div style="width:100%;max-width:440px;padding:22px;background:rgba(10,32,53,.7);
+    border:1px solid rgba(0,229,255,.18);border-radius:10px;display:flex;flex-direction:column;gap:14px">
+    <div>
+      <div style="font-family:var(--mono);font-size:9px;color:var(--dim);margin-bottom:6px;letter-spacing:.06em">
+        APPS SCRIPT URL (lector de datos)
+      </div>
+      <input id="setup-url" type="text" placeholder="https://script.google.com/macros/s/.../exec"
+        style="width:100%;padding:11px 14px;font-size:11px"
+        oninput="$('setup-err').style.display='none'"/>
+      <div style="font-family:var(--mono);font-size:9px;color:var(--dim);margin-top:5px;line-height:1.6">
+        Use la misma URL del Apps Script de AVSEC PRO, o despliegue AVSEC_Reader.gs por separado.
+      </div>
+    </div>
+    <div id="setup-err" style="display:none;padding:8px 12px;background:rgba(255,23,68,.08);
+      border:1px solid rgba(255,23,68,.3);border-radius:5px;font-family:var(--mono);font-size:10px;color:var(--red)"></div>
+    <button class="btn-solid btn-cyan" onclick="connectReader()" style="width:100%;padding:14px;font-size:12px">
+      ⬡ CONECTAR Y CARGAR DATOS
+    </button>
+  </div>
+  <div style="font-family:var(--mono);font-size:9px;color:var(--dim)">
+    SJO · MROC · AEROPUERTO INTERNACIONAL JUAN SANTAMARÍA
+  </div>
+</div>
+
+<!-- ── MAIN DASHBOARD (hidden until connected) ── -->
+<div id="main-dashboard" style="display:none;min-height:100vh;flex-direction:column">
+
+  <!-- TOP NAV -->
+  <div class="topnav">
+    <div style="display:flex;align-items:center;gap:10px;margin-right:10px">
+      <div class="hex-ring" style="width:32px;height:32px;flex-shrink:0">
+        <div class="r1" style="border-width:1.5px"></div>
+        <div class="r2" style="inset:4px;border-width:1px"></div>
+        <div class="ri" style="font-size:12px">✈</div>
+      </div>
+      <div>
+        <div class="holo-text" style="font-family:var(--head);font-size:15px;font-weight:900;letter-spacing:.1em;line-height:1">
+          AVSEC<span style="-webkit-text-fill-color:var(--violet);color:var(--violet)">PRO</span>
+        </div>
+        <div style="font-family:var(--mono);font-size:8px;color:var(--dim);letter-spacing:.05em">DASHBOARD · SJO · <span id="nav-clock"></span></div>
+      </div>
+    </div>
+
+    <nav style="display:flex;gap:2px">
+      <button class="nav-tab active" onclick="switchTab('resumen',this)">Resumen</button>
+      <button class="nav-tab" onclick="switchTab('inspeccion',this)">Inspección</button>
+      <button class="nav-tab" onclick="switchTab('control',this)">Control Accesos</button>
+      <button class="nav-tab" onclick="switchTab('rampa',this)">Rampa</button>
+      <button class="nav-tab" onclick="switchTab('fotos',this)">📷 Evidencia</button>
+    </nav>
+
+    <div style="margin-left:auto;display:flex;align-items:center;gap:10px">
+      <button class="btn-outline" onclick="refreshAll()">↺ Actualizar</button>
+      <button class="btn-outline" onclick="showSetup()" style="color:var(--dim);border-color:rgba(255,255,255,.1)">⚙</button>
+    </div>
+  </div>
+
+  <!-- CONTENT AREA -->
+  <div id="content-area" style="flex:1">
+
+    <!-- ══ TAB: RESUMEN ══ -->
+    <div id="tab-resumen" class="tab-content active">
+      <div class="section">
+        <div>
+          <div class="section-title">RESUMEN OPERACIONAL</div>
+          <div class="section-sub" id="resumen-subtitle">Todas las operaciones registradas</div>
+        </div>
+
+        <!-- Stats -->
+        <div id="stat-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px"></div>
+
+        <!-- Filter bar -->
+        <div style="padding:16px 18px;background:var(--card);border-radius:8px;border:1px solid rgba(0,229,255,.1)">
+          <div style="font-family:var(--mono);font-size:9px;color:var(--dim);letter-spacing:.08em;margin-bottom:12px">FILTROS GLOBALES</div>
+          <div class="filter-bar">
+            <div class="filter-group">
+              <div class="filter-label">FECHA (dd/mm/yyyy)</div>
+              <input id="f-fecha" type="text" placeholder="17/03/2025" style="width:150px" oninput="applyFilters()"/>
+            </div>
+            <div class="filter-group">
+              <div class="filter-label">AEROLÍNEA</div>
+              <input id="f-aerolinea" type="text" placeholder="Copa, Avianca..." style="width:160px" oninput="applyFilters()"/>
+            </div>
+            <div class="filter-group">
+              <div class="filter-label">N° VUELO</div>
+              <input id="f-vuelo" type="text" placeholder="CM201" style="width:120px" oninput="applyFilters()"/>
+            </div>
+            <div class="filter-group">
+              <div class="filter-label">HOJA</div>
+              <select id="f-sheet" onchange="applyFilters()" style="width:150px">
+                <option value="all">Todas</option>
+                <option value="inspeccion">Inspección</option>
+                <option value="control">Control Accesos</option>
+                <option value="rampa">Rampa</option>
+              </select>
+            </div>
+            <button class="btn-outline" onclick="clearFilters()">✕ Limpiar</button>
+            <button class="btn-outline" onclick="exportCSV()" style="color:var(--neon);border-color:rgba(57,255,20,.3)">⬇ CSV</button>
+          </div>
+        </div>
+
+        <!-- Unified table -->
+        <div style="border-radius:8px;overflow:hidden;border:1px solid rgba(0,229,255,.1);background:var(--card)">
+          <div style="padding:12px 18px;border-bottom:1px solid rgba(0,229,255,.1);display:flex;align-items:center;justify-content:space-between">
+            <span style="font-family:var(--mono);font-size:10px;color:var(--t3)">
+              TODOS LOS REGISTROS · <span id="total-count" style="color:var(--cyan)">0</span> entradas
+            </span>
+            <span id="filter-badge" style="font-family:var(--mono);font-size:9px;color:var(--amber);display:none">⚡ FILTROS ACTIVOS</span>
+          </div>
+          <div style="overflow-x:auto">
+            <table class="data-table" id="main-table">
+              <thead>
+                <tr>
+                  <th>HOJA</th><th>FECHA</th><th>HORA</th><th>VUELO</th><th>AEROLÍNEA</th>
+                  <th>NOMBRE</th><th>CÉDULA</th><th>EMPRESA</th><th>VIGENCIA</th><th>N° CRED.</th><th>DIRECCIÓN</th>
+                </tr>
+              </thead>
+              <tbody id="main-tbody"></tbody>
+            </table>
+          </div>
+          <div class="pager" style="padding:10px 14px">
+            <button onclick="changePage(-1)" id="prev-btn">← Prev</button>
+            <span id="page-info">0 / 0</span>
+            <button onclick="changePage(1)" id="next-btn">Sig →</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ TAB: INSPECCIÓN ══ -->
+    <div id="tab-inspeccion" class="tab-content">
+      <div class="section">
+        <div><div class="section-title" style="color:var(--cyan)">🔍 INSPECCIONES DE AERONAVE</div>
+        <div class="section-sub">Credenciales pre-operación · Revisión de 12 zonas</div></div>
+        <div id="inspeccion-content"></div>
+      </div>
+    </div>
+
+    <!-- ══ TAB: CONTROL ══ -->
+    <div id="tab-control" class="tab-content">
+      <div class="section">
+        <div><div class="section-title" style="color:var(--neon)">📛 CONTROL DE ACCESOS</div>
+        <div class="section-sub">Registro de ingresos y salidas de aeronave</div></div>
+        <div id="control-content"></div>
+      </div>
+    </div>
+
+    <!-- ══ TAB: RAMPA ══ -->
+    <div id="tab-rampa" class="tab-content">
+      <div class="section">
+        <div><div class="section-title" style="color:var(--amber)">🚧 OPERACIONES DE RAMPA</div>
+        <div class="section-sub">Credenciales · Gaseo · Pushback</div></div>
+        <div id="rampa-content"></div>
+      </div>
+    </div>
+
+    <!-- ══ TAB: FOTOS ══ -->
+    <div id="tab-fotos" class="tab-content">
+      <div class="section">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px">
+          <div>
+            <div class="section-title">📷 EVIDENCIA FOTOGRÁFICA</div>
+            <div class="section-sub">Carpetas por operación en Google Drive · AVSEC_APP</div>
+          </div>
+          <button class="btn-outline" onclick="loadFolders()">↺ Recargar</button>
+        </div>
+
+        <div style="display:grid;grid-template-columns:260px 1fr;gap:16px;min-height:500px">
+          <!-- Folder list -->
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <div style="font-family:var(--mono);font-size:9px;color:var(--dim);letter-spacing:.06em;margin-bottom:4px">
+              CARPETAS DE OPERACIÓN
+            </div>
+            <div id="folder-list" style="display:flex;flex-direction:column;gap:6px;overflow-y:auto;max-height:600px"></div>
+          </div>
+
+          <!-- Photo gallery -->
+          <div>
+            <div id="gallery-header" style="font-family:var(--mono);font-size:10px;color:var(--dim);margin-bottom:12px">
+              Seleccione una carpeta para ver las fotos
+            </div>
+            <div id="photo-gallery"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /content-area -->
+</div><!-- /main-dashboard -->
+
+<script>
+// ══ CONFIG ════════════════════════════════════════════════════════
+let READER_URL = localStorage.getItem("avsec_reader_url") || "";
+const PAGE_SIZE = 50;
+
+// ══ STATE ═════════════════════════════════════════════════════════
+let allData   = { inspeccion:[], control:[], rampa:[] };
+let filtered  = [];
+let curPage   = 1;
+let curTab    = "resumen";
+let curFolder = null;
+
+const $ = id => document.getElementById(id);
+
+// ══ INIT ══════════════════════════════════════════════════════════
+(function init() {
+  startClock();
+  if (READER_URL) {
+    showDashboard();
+    refreshAll();
+  }
+})();
+
+function startClock() {
+  const tick = () => {
+    const c = $("nav-clock");
+    if(c) c.textContent = new Date().toLocaleTimeString("es-CR",{hour:"2-digit",minute:"2-digit"});
+  };
+  tick();
+  setInterval(tick, 1000);
+}
+
+// ══ SETUP / CONNECT ═══════════════════════════════════════════════
+function connectReader() {
+  const url = ($("setup-url")?.value||"").trim();
+  if (!url || !url.startsWith("https://script.google.com")) {
+    showSetupErr("URL inválida. Debe comenzar con https://script.google.com");
+    return;
+  }
+  READER_URL = url;
+  localStorage.setItem("avsec_reader_url", url);
+  showDashboard();
+  refreshAll();
+}
+
+function showSetupErr(msg) {
+  const el = $("setup-err");
+  if(el){ el.textContent = msg; el.style.display = "block"; }
+}
+
+function showDashboard() {
+  $("setup-screen").style.display = "none";
+  const d = $("main-dashboard");
+  d.style.display = "flex";
+}
+
+function showSetup() {
+  $("main-dashboard").style.display = "none";
+  $("setup-screen").style.display = "flex";
+  const inp = $("setup-url");
+  if(inp) inp.value = READER_URL;
+}
+
+// ══ FETCH DATA ════════════════════════════════════════════════════
+async function fetchData(params={}) {
+  if(!READER_URL) return null;
+  const qs = new URLSearchParams({ action:"getData", ...params }).toString();
+  const res = await fetch(`${READER_URL}?${qs}`);
+  return res.json();
+}
+
+async function fetchFolders() {
+  if(!READER_URL) return null;
+  const res = await fetch(`${READER_URL}?action=getFolders`);
+  return res.json();
+}
+
+async function fetchPhotos(folderId) {
+  if(!READER_URL) return null;
+  const res = await fetch(`${READER_URL}?action=getPhotos&folderId=${encodeURIComponent(folderId)}`);
+  return res.json();
+}
+
+async function refreshAll() {
+  showLoading("main-tbody","Cargando datos...");
+  showLoading("stat-grid","");
+
+  try {
+    const result = await fetchData({ sheet:"all" });
+    if(!result?.ok) throw new Error(result?.error||"Error de conexión");
+
+    allData = result.data || { inspeccion:[], control:[], rampa:[] };
+    applyFilters();
+    buildStats();
+    renderSheetTab("inspeccion");
+    renderSheetTab("control");
+    renderSheetTab("rampa");
+
+    const sub = $("resumen-subtitle");
+    if(sub) sub.textContent = `${result.total} registros totales · Actualizado ${new Date().toLocaleTimeString("es-CR")}`;
+  } catch(e) {
+    showError("main-tbody", e.message);
+    console.error(e);
+  }
+}
+
+// ══ FILTERS ═══════════════════════════════════════════════════════
+function applyFilters() {
+  const fecha     = ($("f-fecha")?.value||"").trim().toLowerCase();
+  const aerolinea = ($("f-aerolinea")?.value||"").trim().toLowerCase();
+  const vuelo     = ($("f-vuelo")?.value||"").trim().toLowerCase();
+  const sheet     = ($("f-sheet")?.value||"all");
+
+  const hasFilter = fecha||aerolinea||vuelo||sheet!=="all";
+  const fb = $("filter-badge");
+  if(fb) fb.style.display = hasFilter ? "inline" : "none";
+
+  let pool = [];
+  ["inspeccion","control","rampa"].forEach(s => {
+    if(sheet!=="all" && sheet!==s) return;
+    pool = pool.concat((allData[s]||[]).map(r=>({...r,_sheet:s})));
+  });
+
+  filtered = pool.filter(r => {
+    if(fecha     && !(r.fecha||"").toLowerCase().includes(fecha))         return false;
+    if(aerolinea && !(r.aerolinea||"").toLowerCase().includes(aerolinea)) return false;
+    if(vuelo     && !(r.vuelo||"").toLowerCase().includes(vuelo))         return false;
+    return true;
+  });
+
+  // Sort by timestamp desc
+  filtered.sort((a,b)=>(b.timestamp||"").localeCompare(a.timestamp||""));
+  curPage = 1;
+  renderMainTable();
+  const tc = $("total-count");
+  if(tc) tc.textContent = filtered.length;
+}
+
+function clearFilters() {
+  ["f-fecha","f-aerolinea","f-vuelo"].forEach(id=>{ const el=$(id); if(el)el.value=""; });
+  const fs=$("f-sheet"); if(fs) fs.value="all";
+  applyFilters();
+}
+
+// ══ MAIN TABLE ════════════════════════════════════════════════════
+function renderMainTable() {
+  const tbody = $("main-tbody");
+  if(!tbody) return;
+
+  const total = filtered.length;
+  const pages = Math.ceil(total/PAGE_SIZE) || 1;
+  const start = (curPage-1)*PAGE_SIZE;
+  const rows  = filtered.slice(start, start+PAGE_SIZE);
+
+  if(rows.length===0){
+    tbody.innerHTML=`<tr><td colspan="11"><div class="empty"><div class="empty-icon">🔍</div><p>Sin registros con los filtros actuales</p></div></td></tr>`;
+  } else {
+    tbody.innerHTML = rows.map(r => {
+      const isExp  = isExpired(r.vigencia);
+      const sLabel = { inspeccion:"INSP", control:"CTRL", rampa:"RAMP" }[r._sheet]||r._sheet;
+      const sCls   = { inspeccion:"badge-insp", control:"badge-ctrl", rampa:"badge-ramp" }[r._sheet]||"";
+      const dCls   = r.direccion==="SALIDA"?"badge-out":"badge-in";
+      return `<tr class="${isExp?"expired":""}">
+        <td><span class="badge ${sCls}">${sLabel}</span></td>
+        <td>${r.fecha||""}</td>
+        <td>${r.hora||""}</td>
+        <td style="font-weight:700;color:var(--cyan)">${r.vuelo||""}</td>
+        <td>${r.aerolinea||""}</td>
+        <td style="color:var(--t1);font-weight:500">${r.nombre||""}</td>
+        <td>${r.cedula||""}</td>
+        <td>${r.empresa||""}</td>
+        <td>${isExp
+          ? `<span class="badge badge-exp">⚠ ${r.vigencia}</span>`
+          : `<span style="color:var(--t2)">${r.vigencia||""}</span>`}</td>
+        <td style="color:var(--violet)">${r.id_cred||""}</td>
+        <td><span class="badge ${dCls}">${r.direccion==="SALIDA"?"⬆ SALIDA":"⬇ INGRESO"}</span></td>
+      </tr>`;
+    }).join("");
+  }
+
+  const pi=$("page-info"); if(pi) pi.textContent=`${curPage} / ${pages}`;
+  const pb=$("prev-btn"); if(pb) pb.disabled=(curPage<=1);
+  const nb=$("next-btn"); if(nb) nb.disabled=(curPage>=pages);
+}
+
+function changePage(dir) {
+  const pages = Math.ceil(filtered.length/PAGE_SIZE)||1;
+  curPage = Math.min(Math.max(1,curPage+dir),pages);
+  renderMainTable();
+}
+
+// ══ INDIVIDUAL SHEET TABS ════════════════════════════════════════
+function renderSheetTab(sheet) {
+  const el = $(`${sheet}-content`);
+  if(!el) return;
+  const rows = (allData[sheet]||[]).slice().sort((a,b)=>(b.timestamp||"").localeCompare(a.timestamp||""));
+
+  if(rows.length===0){
+    el.innerHTML=`<div class="empty"><div class="empty-icon">📋</div><p>Sin registros en esta hoja</p></div>`;
+    return;
+  }
+
+  const colorMap={inspeccion:"var(--cyan)",control:"var(--neon)",rampa:"var(--amber)"};
+  const color = colorMap[sheet]||"var(--cyan)";
+
+  // Mini stats
+  const ingresos = rows.filter(r=>r.direccion!=="SALIDA").length;
+  const salidas  = rows.filter(r=>r.direccion==="SALIDA").length;
+  const expired  = rows.filter(r=>isExpired(r.vigencia)).length;
+  const vuelos   = [...new Set(rows.map(r=>r.vuelo).filter(Boolean))].length;
+
+  el.innerHTML = `
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:16px">
+      ${miniStat("Total",rows.length,color)}
+      ${miniStat("Ingresos",ingresos,"var(--neon)")}
+      ${miniStat("Salidas",salidas,"var(--red)")}
+      ${miniStat("Vuelos únicos",vuelos,"var(--amber)")}
+      ${miniStat("Vencidas",expired,"var(--red)")}
+    </div>
+    <div style="border-radius:8px;overflow:hidden;border:1px solid rgba(0,229,255,.1);background:var(--card)">
+      <div style="overflow-x:auto">
+        <table class="data-table">
+          <thead><tr>
+            <th>FECHA</th><th>HORA</th><th>VUELO</th><th>AEROLÍNEA</th>
+            <th>NOMBRE</th><th>CÉDULA</th><th>EMPRESA</th><th>VIGENCIA</th><th>N° CRED.</th><th>DIRECCIÓN</th>
+          </tr></thead>
+          <tbody>${rows.slice(0,200).map(r=>{
+            const isExp=isExpired(r.vigencia);
+            return `<tr class="${isExp?"expired":""}">
+              <td>${r.fecha||""}</td><td>${r.hora||""}</td>
+              <td style="font-weight:700;color:${color}">${r.vuelo||""}</td>
+              <td>${r.aerolinea||""}</td>
+              <td style="color:var(--t1)">${r.nombre||""}</td>
+              <td>${r.cedula||""}</td>
+              <td>${r.empresa||""}</td>
+              <td>${isExp?`<span class="badge badge-exp">⚠ ${r.vigencia}</span>`:r.vigencia||""}</td>
+              <td style="color:var(--violet)">${r.id_cred||""}</td>
+              <td><span class="badge ${r.direccion==="SALIDA"?"badge-out":"badge-in"}">${r.direccion==="SALIDA"?"⬆ SALIDA":"⬇ INGRESO"}</span></td>
+            </tr>`;
+          }).join("")}</tbody>
+        </table>
+      </div>
+    </div>`;
+}
+
+function miniStat(label, val, color) {
+  return `<div class="stat-card" style="border-color:${color}20">
+    <div style="font-family:var(--head);font-size:28px;font-weight:900;color:${color};text-shadow:0 0 12px ${color}50">${val}</div>
+    <div style="font-family:var(--mono);font-size:9px;color:var(--dim);margin-top:4px;letter-spacing:.06em">${label}</div>
+  </div>`;
+}
+
+// ══ STATS ═════════════════════════════════════════════════════════
+function buildStats() {
+  const grid = $("stat-grid");
+  if(!grid) return;
+
+  const total    = (allData.inspeccion||[]).length+(allData.control||[]).length+(allData.rampa||[]).length;
+  const ingresos = [...(allData.inspeccion||[]),...(allData.control||[]),...(allData.rampa||[])].filter(r=>r.direccion!=="SALIDA").length;
+  const salidas  = total-ingresos;
+  const expired  = [...(allData.inspeccion||[]),...(allData.control||[]),...(allData.rampa||[])].filter(r=>isExpired(r.vigencia)).length;
+  const vuelos   = [...new Set([...(allData.inspeccion||[]),...(allData.control||[]),...(allData.rampa||[])].map(r=>r.vuelo).filter(Boolean))].length;
+
+  grid.innerHTML = [
+    miniStat("TOTAL REGISTROS",total,"var(--cyan)"),
+    miniStat("INSPECCIONES",(allData.inspeccion||[]).length,"var(--cyan)"),
+    miniStat("CONTROL ACCESOS",(allData.control||[]).length,"var(--neon)"),
+    miniStat("RAMPA",(allData.rampa||[]).length,"var(--amber)"),
+    miniStat("INGRESOS",ingresos,"var(--neon)"),
+    miniStat("SALIDAS",salidas,"var(--red)"),
+    miniStat("VUELOS ÚNICOS",vuelos,"var(--amber)"),
+    miniStat("CREDENC. VENCIDAS",expired,"var(--red)"),
+  ].join("");
+}
+
+// ══ PHOTOS / FOLDERS ══════════════════════════════════════════════
+async function loadFolders() {
+  const fl = $("folder-list");
+  if(fl) fl.innerHTML=`<div class="spin-wrap"><div class="spinner"></div><span style="font-family:var(--mono);font-size:10px;color:var(--dim)">Cargando carpetas...</span></div>`;
+
+  try {
+    const result = await fetchFolders();
+    if(!result?.ok) throw new Error(result?.error||"Error");
+    const folders = result.folders||[];
+
+    if(!fl) return;
+    if(folders.length===0){
+      fl.innerHTML=`<div class="empty"><div class="empty-icon">📁</div><p>Sin carpetas en Drive</p></div>`;
+      return;
+    }
+
+    fl.innerHTML = folders.map(f=>`
+      <div class="folder-card ${curFolder?.id===f.id?"active":""}" onclick="selectFolder(${JSON.stringify(f).replace(/"/g,"&quot;")})">
+        <div style="font-size:22px">📁</div>
+        <div style="min-width:0;flex:1">
+          <div style="font-family:var(--mono);font-size:10px;color:var(--t1);font-weight:700;
+            overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${f.name}</div>
+          <div style="font-family:var(--mono);font-size:8px;color:var(--dim);margin-top:2px">
+            ${new Date(f.created).toLocaleDateString("es-CR")}
+          </div>
+        </div>
+      </div>`).join("");
+  } catch(e) {
+    if(fl) fl.innerHTML=`<div class="empty"><div class="empty-icon">⚠</div><p style="color:var(--red)">${e.message}</p></div>`;
+  }
+}
+
+async function selectFolder(folder) {
+  curFolder = folder;
+  // Refresh folder list to highlight active
+  loadFolders();
+
+  const gh = $("gallery-header");
+  const pg = $("photo-gallery");
+  if(gh) gh.innerHTML = `<span style="font-family:var(--mono);font-size:10px;color:var(--cyan)">📁 ${folder.name}</span>`;
+  if(pg) pg.innerHTML=`<div class="spin-wrap"><div class="spinner"></div></div>`;
+
+  try {
+    const result = await fetchPhotos(folder.id);
+    if(!result?.ok) throw new Error(result?.error||"Error");
+    const photos = result.photos||[];
+
+    if(!pg) return;
+    if(photos.length===0){
+      pg.innerHTML=`<div class="empty"><div class="empty-icon">📷</div><p>Sin fotos en esta carpeta</p></div>`;
+      return;
+    }
+
+    if(gh) gh.innerHTML=`
+      <span style="font-family:var(--mono);font-size:10px;color:var(--cyan)">📁 ${folder.name}</span>
+      <span style="font-family:var(--mono);font-size:9px;color:var(--dim);margin-left:10px">${photos.length} foto${photos.length!==1?"s":""}</span>`;
+
+    pg.innerHTML=`<div class="photo-grid">${photos.map(p=>`
+      <div class="photo-card" onclick="openLightbox('${p.url}','${p.name.replace(/'/g,"\\'")}','${p.url}')">
+        <img src="${p.thumb}" loading="lazy" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%22180%22 height=%22130%22><rect fill=%22%230a2035%22 width=%22180%22 height=%22130%22/><text x=%2290%22 y=%2270%22 text-anchor=%22middle%22 fill=%22%2337474F%22 font-size=%2228%22>📷</text></svg>'"/>
+        <div class="photo-meta">
+          <div class="photo-name" title="${p.name}">${p.name}</div>
+          <div class="photo-time">${new Date(p.created).toLocaleString("es-CR")}</div>
+        </div>
+      </div>`).join("")}</div>`;
+  } catch(e) {
+    if(pg) pg.innerHTML=`<div class="empty"><div class="empty-icon">⚠</div><p style="color:var(--red)">${e.message}</p></div>`;
+  }
+}
+
+// ══ LIGHTBOX ══════════════════════════════════════════════════════
+function openLightbox(url, name, driveUrl) {
+  const lb=$("lightbox"); if(!lb) return;
+  $("lightbox-img").src=url;
+  $("lightbox-name").textContent=name;
+  $("lightbox-link").href=driveUrl;
+  lb.classList.add("open");
+}
+function closeLightbox() {
+  $("lightbox")?.classList.remove("open");
+  $("lightbox-img").src="";
+}
+document.addEventListener("keydown",e=>{ if(e.key==="Escape") closeLightbox(); });
+
+// ══ TAB NAVIGATION ════════════════════════════════════════════════
+function switchTab(tab, btn) {
+  curTab = tab;
+  document.querySelectorAll(".nav-tab").forEach(b=>b.classList.remove("active"));
+  if(btn) btn.classList.add("active");
+  document.querySelectorAll(".tab-content").forEach(el=>el.classList.remove("active"));
+  const tc=$(`tab-${tab}`); if(tc) tc.classList.add("active");
+  // Lazy-load folders on first visit
+  if(tab==="fotos" && !$("folder-list").children.length) loadFolders();
+}
+
+// ══ EXPORT CSV ════════════════════════════════════════════════════
+function exportCSV() {
+  if(!filtered.length) return;
+  const headers=["Hoja","Fecha","Hora","Vuelo","Aerolínea","Nombre","Cédula","Empresa","Vigencia","N° Cred.","Dirección"];
+  const rows=filtered.map(r=>[
+    r._sheet,r.fecha,r.hora,r.vuelo,r.aerolinea,r.nombre,r.cedula,r.empresa,r.vigencia,r.id_cred,r.direccion
+  ].map(v=>`"${(v||"").replace(/"/g,'""')}"`).join(","));
+  const csv=[headers.join(","),...rows].join("\n");
+  const blob=new Blob(["\uFEFF"+csv],{type:"text/csv;charset=utf-8"});
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(blob);
+  a.download=`AVSEC_${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
+}
+
+// ══ HELPERS ═══════════════════════════════════════════════════════
+function isExpired(vigencia) {
+  if(!vigencia) return false;
+  const m=vigencia.match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})/);
+  if(!m) return false;
+  let [,d,mo,y]=m; if(y.length===2) y="20"+y;
+  return new Date(+y,+mo-1,+d,23,59,59)<new Date();
+}
+
+function showLoading(id,msg) {
+  const el=$(id); if(!el) return;
+  el.innerHTML=`<tr><td colspan="11"><div class="spin-wrap"><div class="spinner"></div>${msg?`<span style="font-family:var(--mono);font-size:10px;color:var(--dim)">${msg}</span>`:""}</div></td></tr>`;
+}
+
+function showError(id,msg) {
+  const el=$(id); if(!el) return;
+  el.innerHTML=`<tr><td colspan="11"><div class="empty"><div class="empty-icon">⚠</div><p style="color:var(--red)">${msg}</p><p>Verifique la URL del Apps Script en ⚙</p></div></td></tr>`;
+}
+</script>
+</body>
+</html>
